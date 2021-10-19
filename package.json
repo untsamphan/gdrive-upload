@@ -1,0 +1,7 @@
+{
+  "name": "GDriveUploader",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Samphan Raruenrom",
+  "license": "MIT"
+}
