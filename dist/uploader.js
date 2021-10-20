@@ -15,14 +15,6 @@ function gdUpload({ file, token, folder, buf, onProgress }) {
             throw "bad param";
         if (!onProgress)
             onProgress = (_v) => { };
-        const chunkpot = getChunkpot(GduChunkSize, file.size);
-        const chunks = chunkpot.chunks.map((e) => ({
-            data: buf.slice(e.startByte, e.endByte + 1),
-            length: e.numByte,
-            range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
-        }));
-        onProgress(0);
-        console.log("chunks:", chunks);
         const body = { mimeType: file.type, name: file.name };
         if (folder)
             body.parents = [folder];
@@ -45,79 +37,46 @@ function gdUpload({ file, token, folder, buf, onProgress }) {
         const location = response.headers.get("location");
         if (!location)
             throw "no location";
-        doUpload(location, chunks, onProgress);
+        doUpload(location, file, buf, onProgress);
     });
 }
-function doUpload(location, chunks, onProgress) {
+function doUpload(location, file, buf, onProgress) {
     uploadChunk(0);
-    function uploadChunk(current) {
+    function uploadChunk(start) {
         return __awaiter(this, void 0, void 0, function* () {
-            onProgress(current / chunks.length);
-            const chunk = chunks[current];
+            onProgress(start / file.size);
+            let end = start + GduChunkSize;
+            if (end > file.size)
+                end = file.size;
+            console.log("start:end", start, end);
+            const data = buf.slice(start, end);
             let response;
             try {
                 response = yield fetch(location, {
                     method: "PUT",
-                    headers: { "Content-Range": chunk.range },
-                    body: chunk.data
+                    headers: {
+                        "Content-Range": `bytes ${start}-${end - 1}/${file.size}`
+                    },
+                    body: data
                 });
             }
             catch (error) {
                 throw `chunk fetch: (${error})`;
             }
-            if (response.ok) {
-                onProgress(1);
+            if (response.status == 308) {
+                const r = response.headers.get("Content-Range");
+                if (!r)
+                    throw "no range in response";
+                const next = Number(r.substring(r.indexOf("-") + 1, r.indexOf("/")));
+                if (!Number.isInteger(next) || next < start)
+                    throw "bad range: " + r;
+                uploadChunk(next);
             }
-            else if (response.status == 308) {
-                uploadChunk(current + 1);
-            }
-            else {
+            else if (response.ok)
+                onProgress(1); // Done
+            else
                 throw "chunk status: " + response.status;
-            }
         });
     }
-}
-function getChunkpot(chunkSize, fileSize) {
-    var chunkPot = {};
-    chunkPot.total = fileSize;
-    chunkPot.chunks = [];
-    if (fileSize > chunkSize) {
-        var numE = chunkSize;
-        var endS = function (f, n) {
-            var c = f % n;
-            if (c == 0) {
-                return 0;
-            }
-            else {
-                return c;
-            }
-        }(fileSize, numE);
-        var repeat = Math.floor(fileSize / numE);
-        for (var i = 0; i <= repeat; i++) {
-            var startAddress = i * numE;
-            var c = {};
-            c.startByte = startAddress;
-            if (i < repeat) {
-                c.endByte = startAddress + numE - 1;
-                c.numByte = numE;
-                chunkPot.chunks.push(c);
-            }
-            else if (i == repeat && endS > 0) {
-                c.endByte = startAddress + endS - 1;
-                c.numByte = endS;
-                chunkPot.chunks.push(c);
-            }
-        }
-    }
-    else {
-        var chunk = {
-            startByte: 0,
-            endByte: fileSize - 1,
-            numByte: fileSize,
-        };
-        chunkPot.chunks.push(chunk);
-    }
-    console.log("chunkPot: ", chunkPot);
-    return chunkPot;
 }
 //# sourceMappingURL=uploader.js.map
