@@ -25,21 +25,17 @@ async function _getUploadLocation(file: File, token: string, folder?: string) {
   if (folder) body.parents = [folder];
   let response: Response;
 
-  try {
-    response = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
-      {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      }
-    );
-  } catch(error) {
-    throw "init fetch: " + error;
-  }
+  response = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    }
+  );
 
   if (!response.ok) throw "init fetch status: " + response.status;
   const location = response.headers.get("location");
@@ -53,34 +49,23 @@ async function _uploadChunks(file: File, location: string,
 
   for(let start = 0;; start = ulEnd + 1) {
     onProgress(start / file.size);
+    const end = Math.min(start + chunkSize, file.size);
+    //console.log("start:end", start, end);
 
-    let end = start + chunkSize;
-    if (end > file.size) end = file.size;
-    console.log("start:end", start, end);
-
-    //const reader = new FileReader();
-    const blob = await file.slice(start, end).arrayBuffer();
-    //reader.readAsArrayBuffer(blob);
-
-    let response: Response;
-    try {
-      response = await fetch(location, {
-        method: "PUT",
-        headers: {
-          "Content-Range": `bytes ${start}-${end-1}/${file.size}`
-        },
-        body: blob
-      });
-    } catch(error) {
-      throw "chunk fetch: " + error;
-    }
-
+    const blob = await file.slice(start, end).arrayBuffer(); // read from file
+    const response = await fetch(location, { // upload to location
+      method: "PUT",
+      headers: {
+        "Content-Range": `bytes ${start}-${end-1}/${file.size}`
+      },
+      body: blob
+    });
     if (response.ok) break; // all done
     if (response.status != 308) throw "chunk fetch status: " + response.status;
 
     const r = response.headers.get("Range");
     if (!r) throw "no range in response";
-    ulEnd = parseInt(r.substr(r.indexOf("-") + 1));
+    ulEnd = parseInt(r.substr(r.indexOf("-") + 1)); // real uploaded
     if (!Number.isInteger(ulEnd) || ulEnd < start) throw "bad range: " + r;
   }
 }
