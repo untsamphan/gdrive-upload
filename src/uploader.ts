@@ -60,11 +60,11 @@ function doUpload(location: string, file: File, buf: ArrayBuffer, onProgress: Gd
       throw `chunk fetch: (${error})`;
     }
     if (response.status == 308) {
-      const r = response.headers.get("Content-Range");
+      const r = response.headers.get("Range");
       if (!r) throw "no range in response";
-      const next = Number(r.substring(r.indexOf("-")+1, r.indexOf("/")));
-      if (!Number.isInteger(next) || next < start) throw "bad range: " + r;
-      uploadChunk(next);
+      const realEnd = parseInt(r.substr(r.indexOf("-")+1));
+      if (!Number.isInteger(realEnd) || realEnd < start) throw "bad range: " + r;
+      uploadChunk(realEnd + 1);
     } else if (response.ok) onProgress(1); // Done
     else throw "chunk status: " + response.status;
   }
