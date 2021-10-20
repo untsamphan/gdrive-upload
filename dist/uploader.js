@@ -1,41 +1,52 @@
 "use strict";
-const chunkSize = 5 * 1024 * 1024;
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+const GduChunkSize = 5 * 1024 * 1024;
 function gdUpload({ file, token, folder, buf, onProgress }) {
-    if (!(file && token))
-        throw "bad param";
-    if (!onProgress)
-        onProgress = (_v) => { };
-    const chunkpot = getChunkpot(chunkSize, file.size);
-    const chunks = chunkpot.chunks.map((e) => ({
-        data: buf.slice(e.startByte, e.endByte + 1),
-        length: e.numByte,
-        range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
-    }));
-    onProgress(0);
-    console.log("chunks:", chunks);
-    const body = { mimeType: file.type, name: file.name };
-    if (folder)
-        body.parents = [folder];
-    fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
-        method: "POST",
-        headers: {
-            Authorization: "Bearer " + token,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-    }).then(response => {
-        if (!response.ok) {
-            throw "fetch " + response.status;
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!(file && token))
+            throw "bad param";
+        if (!onProgress)
+            onProgress = (_v) => { };
+        const chunkpot = getChunkpot(GduChunkSize, file.size);
+        const chunks = chunkpot.chunks.map((e) => ({
+            data: buf.slice(e.startByte, e.endByte + 1),
+            length: e.numByte,
+            range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
+        }));
+        onProgress(0);
+        console.log("chunks:", chunks);
+        const body = { mimeType: file.type, name: file.name };
+        if (folder)
+            body.parents = [folder];
+        let response;
+        try {
+            response = yield fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
+                method: "POST",
+                headers: {
+                    Authorization: "Bearer " + token,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            });
         }
-        else {
-            const location = response.headers.get("location");
-            if (location) {
-                doUpload(location, chunks, onProgress);
-            }
-            else
-                throw "no location";
+        catch (error) {
+            throw "init fetch: " + error;
         }
-    }).catch(error => { throw "init fetch status: " + error; });
+        if (!response.ok)
+            throw "init fetch status: " + response.status;
+        const location = response.headers.get("location");
+        if (!location)
+            throw "no location";
+        doUpload(location, chunks, onProgress);
+    });
 }
 function doUpload(location, chunks, onProgress) {
     uploadChunk(0);
