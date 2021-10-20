@@ -1,23 +1,30 @@
-const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
-type GduProgressFn = (value: number) => void;
-
-interface GduOptions {
+interface _Options {
   file: File;
   token: string; // from Google api
-  folder: string; // parent folder id
-  chunkSize: number;
-  onProgress: GduProgressFn;
+  folder?: string; // parent folder id
+  chunkSize?: number;
+  onProgress?: _OnProgressFn;
 }
+type _OnProgressFn = (value: number) => void;
+const _DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
+
 
 async function gdUpload({ file, token, folder, chunkSize, onProgress }
-  : GduOptions) {
+  : _Options) {
   if (!(file && token)) throw "bad param";
-  if (!onProgress) onProgress = (_v: number) => {};
-  if (!chunkSize) chunkSize = DEFAULT_CHUNK_SIZE;
+  const _onProgress = onProgress || ((_v: number) => {});
+  const _chunkSize = chunkSize || _DEFAULT_CHUNK_SIZE;
 
+  const location = await _getUploadLocation(file, token, folder);
+  await _uploadChunks(file, location, _chunkSize, _onProgress);
+  _onProgress(1);
+}
+
+async function _getUploadLocation(file: File, token: string, folder?: string) {
   const body = { mimeType: file.type, name: file.name } as any;
   if (folder) body.parents = [folder];
   let response: Response;
+
   try {
     response = await fetch(
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
@@ -33,13 +40,18 @@ async function gdUpload({ file, token, folder, chunkSize, onProgress }
   } catch(error) {
     throw "init fetch: " + error;
   }
+
   if (!response.ok) throw "init fetch status: " + response.status;
-  const location = response.headers.get("location") || "";
+  const location = response.headers.get("location");
   if (!location) throw "no location";
+  return location;
+}
 
-  uploadChunk(0);
+async function _uploadChunks(file: File, location: string,
+  chunkSize: number, onProgress: _OnProgressFn) {
+  let ulEnd: number;
 
-  async function uploadChunk(start: number) {
+  for(let start = 0;; start = ulEnd + 1) {
     onProgress(start / file.size);
 
     let end = start + chunkSize;
@@ -60,16 +72,15 @@ async function gdUpload({ file, token, folder, chunkSize, onProgress }
         body: blob
       });
     } catch(error) {
-      throw `chunk fetch: (${error})`;
+      throw "chunk fetch: " + error;
     }
-    if (response.status == 308) { // upload next chunk
-      const r = response.headers.get("Range");
-      if (!r) throw "no range in response";
-      const realEnd = parseInt(r.substr(r.indexOf("-") + 1));
-      if (!Number.isInteger(realEnd) || realEnd < start) throw "bad range: " + r;
-      uploadChunk(realEnd + 1);
 
-    } else if (response.ok) onProgress(1); // all done
-    else throw "chunk status: " + response.status;
+    if (response.ok) break; // all done
+    if (response.status != 308) throw "chunk fetch status: " + response.status;
+
+    const r = response.headers.get("Range");
+    if (!r) throw "no range in response";
+    ulEnd = parseInt(r.substr(r.indexOf("-") + 1));
+    if (!Number.isInteger(ulEnd) || ulEnd < start) throw "bad range: " + r;
   }
 }
