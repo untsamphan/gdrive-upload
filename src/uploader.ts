@@ -58,9 +58,9 @@ async function _uploadChunks(file: File, location: string,
     if (end > file.size) end = file.size;
     console.log("start:end", start, end);
 
-    const reader = new FileReader();
-    const blob = file.slice(start, end);
-    reader.readAsArrayBuffer(blob);
+    //const reader = new FileReader();
+    const blob = await file.slice(start, end).arrayBuffer();
+    //reader.readAsArrayBuffer(blob);
 
     let response: Response;
     try {

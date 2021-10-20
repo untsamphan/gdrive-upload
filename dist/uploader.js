@@ -56,9 +56,9 @@ function _uploadChunks(file, location, chunkSize, onProgress) {
             if (end > file.size)
                 end = file.size;
             console.log("start:end", start, end);
-            const reader = new FileReader();
-            const blob = file.slice(start, end);
-            reader.readAsArrayBuffer(blob);
+            //const reader = new FileReader();
+            const blob = yield file.slice(start, end).arrayBuffer();
+            //reader.readAsArrayBuffer(blob);
             let response;
             try {
                 response = yield fetch(location, {
