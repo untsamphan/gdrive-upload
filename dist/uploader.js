@@ -1,7 +1,10 @@
 "use strict";
 const chunkSize = 5 * 1024 * 1024;
 function gdUpload({ file, token, folder, buf, onProgress }) {
-    console.log(file);
+    if (!(file && token))
+        throw "bad param";
+    if (!onProgress)
+        onProgress = (_v) => { };
     const chunkpot = getChunkpot(chunkSize, file.size);
     const chunks = chunkpot.chunks.map((e) => ({
         data: buf.slice(e.startByte, e.endByte + 1),
@@ -22,7 +25,7 @@ function gdUpload({ file, token, folder, buf, onProgress }) {
         body: JSON.stringify(body)
     }).then(response => {
         if (!response.ok) {
-            throw ("status: " + response.status);
+            throw "fetch " + response.status;
         }
         else {
             const location = response.headers.get("location");
@@ -32,7 +35,7 @@ function gdUpload({ file, token, folder, buf, onProgress }) {
             else
                 throw "no location";
         }
-    }).catch(error => { throw ("fetch: " + error); });
+    }).catch(error => { throw "init fetch status: " + error; });
 }
 function doUpload(location, chunks, onProgress) {
     uploadChunk(0);
@@ -51,10 +54,10 @@ function doUpload(location, chunks, onProgress) {
                 uploadChunk(current + 1);
             }
             else {
-                throw "Chunk Error: " + response.status, "error";
+                throw "chunk status: " + response.status;
             }
             ;
-        }).catch(error => { throw "chunk fetch: " + error; });
+        }).catch(error => { throw `chunk fetch: (${error})`; });
     }
 }
 function getChunkpot(chunkSize, fileSize) {

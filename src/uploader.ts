@@ -11,7 +11,9 @@ interface GduOptions {
 }
 
 function gdUpload({file, token, folder, buf, onProgress}: GduOptions) {
-	console.log(file);
+	if (!(file && token)) throw "bad param";
+	if (!onProgress) onProgress = (_v: number) => {};
+
 	const chunkpot = getChunkpot(chunkSize, file.size);
 	const chunks = chunkpot.chunks.map((e: any) => ({
 		data: buf.slice(e.startByte, e.endByte + 1),
@@ -31,14 +33,15 @@ function gdUpload({file, token, folder, buf, onProgress}: GduOptions) {
     },
     body: JSON.stringify(body)
   }).then(response => {
-    if (!response.ok) { throw("status: " + response.status); }
-    else {
+    if (!response.ok) {
+			throw "fetch " + response.status;
+		} else {
       const location = response.headers.get("location");
       if (location) {
         doUpload(location, chunks, onProgress);
       } else throw "no location";
     }
-  }).catch(error => { throw("fetch: " + error); });
+  }).catch(error => { throw "init fetch status: " + error; });
 }
 
 function doUpload(location: string, chunks: any, onProgress: GduProgressFn) {
@@ -58,9 +61,9 @@ function doUpload(location: string, chunks: any, onProgress: GduProgressFn) {
       } else if (response.status == 308) {
         uploadChunk(current+1);
       } else {
-        throw "Chunk Error: " + response.status, "error";
+        throw "chunk status: " + response.status;
       };
-    }).catch(error => { throw "chunk fetch: " + error; });
+    }).catch(error => { throw `chunk fetch: (${error})`; });
 	}
 }
 
