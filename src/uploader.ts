@@ -49,23 +49,27 @@ async function gdUpload({ file, token, folder, buf, onProgress }: GduOptions) {
 function doUpload(location: string, chunks: any, onProgress: GduProgressFn) {
   uploadChunk(0);
 
-  function uploadChunk(current: number) {
+  async function uploadChunk(current: number) {
     onProgress(current / chunks.length);
     const chunk = chunks[current];
+    let response: Response;
 
-    fetch(location, {
-      method: "PUT",
-      headers: { "Content-Range": chunk.range },
-      body: chunk.data
-    }).then(response => {
-      if (response.ok) {
-        onProgress(1);
-      } else if (response.status == 308) {
-        uploadChunk(current + 1);
-      } else {
-        throw "chunk status: " + response.status;
-      };
-    }).catch(error => { throw `chunk fetch: (${error})`; });
+    try {
+      response = await fetch(location, {
+        method: "PUT",
+        headers: { "Content-Range": chunk.range },
+        body: chunk.data
+      });
+    } catch(error) {
+      throw `chunk fetch: (${error})`;
+    }
+    if (response.ok) {
+      onProgress(1);
+    } else if (response.status == 308) {
+      uploadChunk(current + 1);
+    } else {
+      throw "chunk status: " + response.status;
+    }
   }
 }
 

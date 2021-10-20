@@ -51,13 +51,20 @@ function gdUpload({ file, token, folder, buf, onProgress }) {
 function doUpload(location, chunks, onProgress) {
     uploadChunk(0);
     function uploadChunk(current) {
-        onProgress(current / chunks.length);
-        const chunk = chunks[current];
-        fetch(location, {
-            method: "PUT",
-            headers: { "Content-Range": chunk.range },
-            body: chunk.data
-        }).then(response => {
+        return __awaiter(this, void 0, void 0, function* () {
+            onProgress(current / chunks.length);
+            const chunk = chunks[current];
+            let response;
+            try {
+                response = yield fetch(location, {
+                    method: "PUT",
+                    headers: { "Content-Range": chunk.range },
+                    body: chunk.data
+                });
+            }
+            catch (error) {
+                throw `chunk fetch: (${error})`;
+            }
             if (response.ok) {
                 onProgress(1);
             }
@@ -67,8 +74,7 @@ function doUpload(location, chunks, onProgress) {
             else {
                 throw "chunk status: " + response.status;
             }
-            ;
-        }).catch(error => { throw `chunk fetch: (${error})`; });
+        });
     }
 }
 function getChunkpot(chunkSize, fileSize) {
