@@ -1,8 +1,6 @@
 "use strict";
 const chunkSize = 5 * 1024 * 1024;
-function gdUpload({ file, token, parent, buf }) {
-    show("Initializing");
-    showProgress();
+function gdUpload({ file, token, folder, buf, onProgress }) {
     console.log(file);
     const chunkpot = getChunkpot(chunkSize, file.size);
     const chunks = chunkpot.chunks.map((e) => ({
@@ -10,6 +8,7 @@ function gdUpload({ file, token, parent, buf }) {
         length: e.numByte,
         range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
     }));
+    onProgress(chunks.length, 0);
     console.log("chunks:", chunks);
     fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
         method: "POST",
@@ -18,27 +17,26 @@ function gdUpload({ file, token, parent, buf }) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            mimeType: file.type, name: file.name, parents: [parent]
+            mimeType: file.type, name: file.name, parents: [folder]
         })
     }).then(response => {
         if (!response.ok) {
-            logError("status: " + response.status);
+            throw ("status: " + response.status);
         }
         else {
             const location = response.headers.get("location");
             if (location) {
-                doUpload(location, chunks);
+                doUpload(location, chunks, onProgress);
             }
             else
-                logError("no location");
+                throw "no location";
         }
-    }).catch(error => { logError("fetch: " + error); });
+    }).catch(error => { throw ("fetch: " + error); });
 }
-function doUpload(location, chunks) {
-    show("Uploading...", "info");
+function doUpload(location, chunks, onProgress) {
     uploadChunk(0);
     function uploadChunk(current) {
-        showProgress(current, chunks.length);
+        onProgress(chunks.length, current);
         const chunk = chunks[current];
         fetch(location, {
             method: "PUT",
@@ -46,17 +44,16 @@ function doUpload(location, chunks) {
             body: chunk.data
         }).then(response => {
             if (response.ok) {
-                show('Done', "success");
-                showProgress(current + 1, chunks.length);
+                onProgress(chunks.length, current + 1);
             }
             else if (response.status == 308) {
                 uploadChunk(current + 1);
             }
             else {
-                show("Chunk Error: " + response.status, "error");
+                throw "Chunk Error: " + response.status, "error";
             }
             ;
-        }).catch(error => { logError("chunk fetch: " + error); });
+        }).catch(error => { throw "chunk fetch: " + error; });
     }
 }
 function getChunkpot(chunkSize, fileSize) {
@@ -101,32 +98,5 @@ function getChunkpot(chunkSize, fileSize) {
     }
     console.log("chunkPot: ", chunkPot);
     return chunkPot;
-}
-function id(name) {
-    const elem = document.getElementById(name);
-    if (!elem)
-        throw "element not found";
-    return elem;
-}
-function show(text, mode) {
-    const cls = (mode) ? ` class="${mode}"` : '';
-    id("message").innerHTML = `<div${cls}>${text}</div>`;
-    console.log(text);
-}
-function showProgress(value, max) {
-    if (value === undefined || max === undefined) {
-        id("progress").replaceChildren();
-    }
-    else {
-        const percent = Math.floor(100 * value / max);
-        console.log(`progress: ${percent}%`);
-        id("progress").innerHTML =
-            `<div>${percent}%</div>
-      <div><progress max=${max} value=${value}>${percent}%</progress></div>`;
-    }
-}
-function logError(text) {
-    console.log(text);
-    document.body.append(text);
 }
 //# sourceMappingURL=uploader.js.map

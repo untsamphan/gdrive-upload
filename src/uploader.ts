@@ -1,22 +1,24 @@
 const chunkSize = 5 * 1024 * 1024;
 
+type GduProgressFn = (max: number, value: number) => void;
 
 interface GduOptions {
   file: File;
   token: string; // from Google App
-  parent: string; // folder id
+  folder: string; // folder id
   buf: ArrayBuffer;
+	onProgress: GduProgressFn;
 }
 
-function gdUpload({file, token, parent, buf}: GduOptions) {
-	show("Initializing"); showProgress();
+function gdUpload({file, token, folder, buf, onProgress}: GduOptions) {
 	console.log(file);
 	const chunkpot = getChunkpot(chunkSize, file.size);
 	const chunks = chunkpot.chunks.map((e: any) => ({
-			data: buf.slice(e.startByte, e.endByte + 1),
-			length: e.numByte,
-			range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
-		}));
+		data: buf.slice(e.startByte, e.endByte + 1),
+		length: e.numByte,
+		range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
+	}));
+	onProgress(chunks.length, 0);
   console.log("chunks:", chunks);
 
   fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
@@ -26,25 +28,24 @@ function gdUpload({file, token, parent, buf}: GduOptions) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      mimeType: file.type, name: file.name, parents: [parent]
+      mimeType: file.type, name: file.name, parents: [folder]
     })
   }).then(response => {
-    if (!response.ok) { logError("status: " + response.status); }
+    if (!response.ok) { throw("status: " + response.status); }
     else {
       const location = response.headers.get("location");
       if (location) {
-        doUpload(location, chunks);
-      } else logError("no location");
+        doUpload(location, chunks, onProgress);
+      } else throw "no location";
     }
-  }).catch(error => { logError("fetch: " + error); });
+  }).catch(error => { throw("fetch: " + error); });
 }
 
-function doUpload(location: string, chunks: any) {
-	show("Uploading...", "info");
+function doUpload(location: string, chunks: any, onProgress: GduProgressFn) {
   uploadChunk(0);
 
 	function uploadChunk(current: number) {
-    showProgress(current, chunks.length);
+    onProgress(chunks.length, current);
 		const chunk = chunks[current];
 
     fetch(location, {
@@ -53,13 +54,13 @@ function doUpload(location: string, chunks: any) {
       body: chunk.data
     }).then(response => {
 			if (response.ok) {
-        show('Done', "success"); showProgress(current+1, chunks.length);
+        onProgress(chunks.length, current+1);
       } else if (response.status == 308) {
         uploadChunk(current+1);
       } else {
-        show("Chunk Error: " + response.status, "error");
+        throw "Chunk Error: " + response.status, "error";
       };
-    }).catch(error => { logError("chunk fetch: " + error); });
+    }).catch(error => { throw "chunk fetch: " + error; });
 	}
 }
 
@@ -102,30 +103,4 @@ function getChunkpot(chunkSize: number, fileSize: number): any {
 	}
   console.log("chunkPot: ", chunkPot);
 	return chunkPot;
-}
-
-function id(name: string): HTMLElement {
-	const elem = document.getElementById(name);
-  if (!elem) throw "element not found";
-  return elem;
-}
-function show(text: string, mode?: string): void {
-	const cls = (mode) ? ` class="${mode}"` : '';
-	id("message").innerHTML = `<div${cls}>${text}</div>`;
-	console.log(text);
-}
-function showProgress(value?: number, max?: number): void {
-  if (value === undefined || max === undefined) {
-    id("progress").replaceChildren();
-  } else {
-    const percent = Math.floor(100 * value / max);
-    console.log(`progress: ${percent}%`);
-    id("progress").innerHTML =
-      `<div>${percent}%</div>
-      <div><progress max=${max} value=${value}>${percent}%</progress></div>`;
-  }
-}
-function logError(text: string): void {
-  console.log(text);
-  document.body.append(text);
 }
