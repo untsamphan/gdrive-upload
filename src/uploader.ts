@@ -1,6 +1,6 @@
 const chunkSize = 5 * 1024 * 1024;
 
-type GduProgressFn = (max: number, value: number) => void;
+type GduProgressFn = (value: number) => void;
 
 interface GduOptions {
   file: File;
@@ -18,18 +18,18 @@ function gdUpload({file, token, folder, buf, onProgress}: GduOptions) {
 		length: e.numByte,
 		range: "bytes " + e.startByte + "-" + e.endByte + "/" + chunkpot.total
 	}));
-	onProgress(chunks.length, 0);
+	onProgress(0);
   console.log("chunks:", chunks);
 
+	const body = { mimeType: file.type, name: file.name	} as any;
+	if (folder) body.parents = [folder];
   fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
     method: "POST",
     headers: {
       Authorization: "Bearer " + token,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      mimeType: file.type, name: file.name, parents: [folder]
-    })
+    body: JSON.stringify(body)
   }).then(response => {
     if (!response.ok) { throw("status: " + response.status); }
     else {
@@ -45,7 +45,7 @@ function doUpload(location: string, chunks: any, onProgress: GduProgressFn) {
   uploadChunk(0);
 
 	function uploadChunk(current: number) {
-    onProgress(chunks.length, current);
+    onProgress(current / chunks.length);
 		const chunk = chunks[current];
 
     fetch(location, {
@@ -54,7 +54,7 @@ function doUpload(location: string, chunks: any, onProgress: GduProgressFn) {
       body: chunk.data
     }).then(response => {
 			if (response.ok) {
-        onProgress(chunks.length, current+1);
+        onProgress(1);
       } else if (response.status == 308) {
         uploadChunk(current+1);
       } else {
