@@ -1,14 +1,15 @@
-const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
-export default async function driveUpload({ file, token, folder, chunkSize, onProgress }) {
+"use strict";
+;
+async function gdriveUpload({ file, token, folder, chunkSize, onProgress }) {
     if (!(file && token))
         throw new Error("bad param");
     const _onProgress = onProgress || ((_v) => { });
-    const _chunkSize = chunkSize || DEFAULT_CHUNK_SIZE;
-    const location = await getUploadLocation(file, token, folder);
-    await uploadChunks(file, location, _chunkSize, _onProgress);
+    const _chunkSize = chunkSize || 5242880 /* chunkSize */;
+    const location = await _getUploadLocation(file, token, folder);
+    await _uploadChunks(file, location, _chunkSize, _onProgress);
     _onProgress(1);
 }
-async function getUploadLocation(file, token, folder) {
+async function _getUploadLocation(file, token, folder) {
     const metadata = { mimeType: file.type, name: file.name };
     if (folder)
         metadata.parents = [folder];
@@ -27,7 +28,7 @@ async function getUploadLocation(file, token, folder) {
         throw new Error("no location");
     return location;
 }
-async function uploadChunks(file, location, chunkSize, onProgress) {
+async function _uploadChunks(file, location, chunkSize, onProgress) {
     let ulEnd;
     for (let start = 0;; start = ulEnd + 1) {
         onProgress(start / file.size);

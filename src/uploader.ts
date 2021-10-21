@@ -1,28 +1,28 @@
-interface UploadOptions {
+interface _UploadOptions {
   file: File; // the file to upload
   token: string; // auth token from Google api
   folder?: string; // parent folder id to upload to
-  chunkSize?: number; // must be multiple of 256 * 1024
-  onProgress?: OnProgressFn; // 0: start, 1: done, 0.x: progress
+  chunkSize?: number; // must be multiple of 256*1024
+  onProgress?: _OnProgressFn; // 0:start 1:done 0.x:progress
 }
-type OnProgressFn = (value: number) => void;
-const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
+type _OnProgressFn = (value: number) => void;
+const enum _DEFAULT { chunkSize = 5 * 1024 * 1024 };
 
 
-export default async function driveUpload(
-  { file, token, folder, chunkSize, onProgress }: UploadOptions)
+async function gdriveUpload(
+  { file, token, folder, chunkSize, onProgress }: _UploadOptions)
 {
   if (!(file && token)) throw new Error("bad param");
   const _onProgress = onProgress || ((_v: number) => {});
-  const _chunkSize = chunkSize || DEFAULT_CHUNK_SIZE;
+  const _chunkSize = chunkSize || _DEFAULT.chunkSize;
 
-  const location = await getUploadLocation(file, token, folder);
-  await uploadChunks(file, location, _chunkSize, _onProgress);
+  const location = await _getUploadLocation(file, token, folder);
+  await _uploadChunks(file, location, _chunkSize, _onProgress);
   _onProgress(1);
 }
 
 
-async function getUploadLocation(file: File, token: string, folder?: string)
+async function _getUploadLocation(file: File, token: string, folder?: string)
 {
   const metadata = { mimeType: file.type, name: file.name } as any;
   if (folder) metadata.parents = [folder];
@@ -45,8 +45,8 @@ async function getUploadLocation(file: File, token: string, folder?: string)
 }
 
 
-async function uploadChunks(file: File, location: string,
-  chunkSize: number, onProgress: OnProgressFn)
+async function _uploadChunks(file: File, location: string,
+  chunkSize: number, onProgress: _OnProgressFn)
 {
   let ulEnd: number;
 
