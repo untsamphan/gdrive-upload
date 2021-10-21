@@ -18,7 +18,6 @@ async function gdriveUpload({ file, token, folder, chunkSize, onProgress }) {
             return error;
         throw error;
     }
-    _onProgress(1); // signal 100% progress
     return undefined; // success
 }
 async function _getUploadLocation(file, token, folder) {
@@ -27,7 +26,7 @@ async function _getUploadLocation(file, token, folder) {
         metadata.parents = [folder];
     try {
         const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
-            method: "POST",
+            method: "POST", cache: "no-cache",
             headers: {
                 Authorization: "Bearer " + token,
                 "Content-Type": "application/json"
@@ -56,14 +55,13 @@ async function _uploadChunks(file, location, chunkSize, onProgress) {
             const blob = await file.slice(start, end).arrayBuffer(); // read from file
             const response = await fetch(location, // upload to location
             {
-                method: "PUT",
-                headers: {
-                    "Content-Range": `bytes ${start}-${end - 1}/${file.size}`
-                },
-                body: blob
+                method: "PUT", cache: "no-cache", body: blob,
+                headers: { "Content-Range": `bytes ${start}-${end - 1}/${file.size}` }
             });
-            if (response.ok)
-                return undefined; // all done
+            if (response.ok) { // all done
+                onProgress(1); // signal 100% progress
+                return undefined;
+            }
             if (response.status != 308)
                 return new Error("chunk fetch: " + response.status);
             const r = response.headers.get("Range");
