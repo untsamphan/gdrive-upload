@@ -1,15 +1,13 @@
 "use strict";
 ;
-async function gdriveUpload({ file, token, folder, chunkSize, onProgress }) {
-    if (!(file && token))
+async function gdriveUpload(opt) {
+    if (!(opt.file && opt.token))
         throw new Error("bad param");
-    const _onProgress = onProgress || ((_v) => { });
-    const _chunkSize = chunkSize || 5242880 /* chunkSize */;
     try {
-        const location = await _getUploadLocation(file, token, folder);
+        const location = await _getUploadLocation(opt);
         if (location instanceof Error)
             return location;
-        const error = await _uploadChunks(file, location, _chunkSize, _onProgress);
+        const error = await _uploadChunks(location, opt);
         if (error instanceof Error)
             return error;
     }
@@ -20,15 +18,19 @@ async function gdriveUpload({ file, token, folder, chunkSize, onProgress }) {
     }
     return undefined; // success
 }
-async function _getUploadLocation(file, token, folder) {
-    const metadata = { mimeType: file.type, name: file.name };
-    if (folder)
-        metadata.parents = [folder];
+async function _getUploadLocation(opt) {
+    const metadata = { mimeType: opt.file.type, name: opt.file.name };
+    if (opt.folder)
+        metadata.parents = [opt.folder];
+    if (opt.name)
+        metadata.name = opt.name;
+    if (opt.desciption)
+        metadata.desciption = opt.desciption;
     try {
         const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
             method: "POST", cache: "no-cache",
             headers: {
-                Authorization: "Bearer " + token,
+                Authorization: "Bearer " + opt.token,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(metadata)
@@ -46,21 +48,24 @@ async function _getUploadLocation(file, token, folder) {
         throw error;
     }
 }
-async function _uploadChunks(file, location, chunkSize, onProgress) {
+async function _uploadChunks(location, opt) {
+    const onProgress = opt.onProgress || ((_v) => { });
+    const chunkSize = opt.chunkSize || 5242880 /* chunkSize */;
+    const size = opt.file.size;
     try {
         let ulEnd;
         for (let start = 0;; start = ulEnd + 1) {
-            onProgress(start / file.size);
-            const end = Math.min(start + chunkSize, file.size);
-            const blob = await file.slice(start, end).arrayBuffer(); // read from file
-            const response = await fetch(location, // upload to location
+            onProgress(start / size); // signal progress
+            const end = Math.min(start + chunkSize, size);
+            const blob = await opt.file.slice(start, end).arrayBuffer(); // read from file
+            const response = await fetch(location, // upload the chunk to location
             {
                 method: "PUT", cache: "no-cache", body: blob,
-                headers: { "Content-Range": `bytes ${start}-${end - 1}/${file.size}` }
+                headers: { "Content-Range": `bytes ${start}-${end - 1}/${size}` }
             });
             if (response.ok) { // all done
                 onProgress(1); // signal 100% progress
-                return undefined;
+                return undefined; // success
             }
             if (response.status != 308)
                 return new Error("chunk fetch: " + response.status);
