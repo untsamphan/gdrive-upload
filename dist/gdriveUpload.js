@@ -83,4 +83,4 @@ async function _uploadChunks(location, opt) {
         throw error;
     }
 }
-//# sourceMappingURL=uploader.js.map
+//# sourceMappingURL=gdriveUpload.js.map
