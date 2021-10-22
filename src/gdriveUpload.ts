@@ -2,18 +2,18 @@ interface _UploadOptions {
   file: File; // the file to upload
   token: string; // auth token from Google api
   folder?: string; // parent folder id to upload to
-  name?: string;
-  desciption?: string;
+  metadata?: _Metadata; // such as `name`, `description`
   chunkSize?: number; // must be multiple of 256*1024
   onProgress?: _OnProgressFn; // 0:start 1:done 0.x:progress
 }
 type _OnProgressFn = (value: number) => void;
+type _Metadata = {[key: string]: any};
 const enum _DEFAULT { chunkSize = 5 * 1024 * 1024 };
 
 
 async function gdriveUpload(opt: _UploadOptions)
 {
-  if (!(opt.file && opt.token)) throw new Error("bad param");
+  if (!(opt.file && opt.token)) throw new TypeError("bad param");
 
   try {
     const location = await _getUploadLocation(opt);
@@ -31,10 +31,9 @@ async function gdriveUpload(opt: _UploadOptions)
 
 async function _getUploadLocation(opt: _UploadOptions)
 {
-  const metadata = { mimeType: opt.file.type, name: opt.file.name } as any;
+  let metadata: _Metadata = { mimeType: opt.file.type, name: opt.file.name };
   if (opt.folder) metadata.parents = [opt.folder];
-  if (opt.name) metadata.name = opt.name;
-  if (opt.desciption) metadata.desciption = opt.desciption;
+  if (opt.metadata) metadata = { ...metadata, ...opt.metadata };
 
   try {
     const response = await fetch(
@@ -64,13 +63,15 @@ async function _uploadChunks(location: string, opt: _UploadOptions)
 {
   const onProgress = opt.onProgress || ((_v: number) => {});
   const chunkSize = opt.chunkSize || _DEFAULT.chunkSize;
+  if (chunkSize <= 0 || chunkSize % (256 * 1024) !== 0)
+    throw TypeError("bad chunkSize: " + chunkSize);
   const size = opt.file.size;
 
   try {
-    let ulEnd: number;
-    for(let start = 0;; start = ulEnd + 1) {
+    let end: number;
+    for(let start = 0;; start = end + 1) {
       onProgress(start / size); // signal progress
-      const end = Math.min(start + chunkSize, size);
+      end = Math.min(start + chunkSize, size);
 
       const blob = await opt.file.slice(start, end).arrayBuffer(); // read from file
       const response = await fetch(location, // upload the chunk to location
@@ -86,8 +87,8 @@ async function _uploadChunks(location: string, opt: _UploadOptions)
 
       const r = response.headers.get("Range");
       if (!r) return new Error("no Range");
-      ulEnd = parseInt(r.substr(r.indexOf("-") + 1)); // real uploaded
-      if (!Number.isInteger(ulEnd) || ulEnd < start) return new Error("bad range: " + r);
+      end = parseInt(r.substr(r.indexOf("-") + 1)); // get where the real upload end
+      if (!Number.isInteger(end) || end < start) return new Error("bad range: " + r);
     }
 
   } catch (error) {

@@ -2,7 +2,7 @@
 ;
 async function gdriveUpload(opt) {
     if (!(opt.file && opt.token))
-        throw new Error("bad param");
+        throw new TypeError("bad param");
     try {
         const location = await _getUploadLocation(opt);
         if (location instanceof Error)
@@ -19,13 +19,11 @@ async function gdriveUpload(opt) {
     return undefined; // success
 }
 async function _getUploadLocation(opt) {
-    const metadata = { mimeType: opt.file.type, name: opt.file.name };
+    let metadata = { mimeType: opt.file.type, name: opt.file.name };
     if (opt.folder)
         metadata.parents = [opt.folder];
-    if (opt.name)
-        metadata.name = opt.name;
-    if (opt.desciption)
-        metadata.desciption = opt.desciption;
+    if (opt.metadata)
+        metadata = Object.assign(Object.assign({}, metadata), opt.metadata);
     try {
         const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
             method: "POST", cache: "no-cache",
@@ -51,12 +49,14 @@ async function _getUploadLocation(opt) {
 async function _uploadChunks(location, opt) {
     const onProgress = opt.onProgress || ((_v) => { });
     const chunkSize = opt.chunkSize || 5242880 /* chunkSize */;
+    if (chunkSize <= 0 || chunkSize % (256 * 1024) !== 0)
+        throw TypeError("bad chunkSize: " + chunkSize);
     const size = opt.file.size;
     try {
-        let ulEnd;
-        for (let start = 0;; start = ulEnd + 1) {
+        let end;
+        for (let start = 0;; start = end + 1) {
             onProgress(start / size); // signal progress
-            const end = Math.min(start + chunkSize, size);
+            end = Math.min(start + chunkSize, size);
             const blob = await opt.file.slice(start, end).arrayBuffer(); // read from file
             const response = await fetch(location, // upload the chunk to location
             {
@@ -72,8 +72,8 @@ async function _uploadChunks(location, opt) {
             const r = response.headers.get("Range");
             if (!r)
                 return new Error("no Range");
-            ulEnd = parseInt(r.substr(r.indexOf("-") + 1)); // real uploaded
-            if (!Number.isInteger(ulEnd) || ulEnd < start)
+            end = parseInt(r.substr(r.indexOf("-") + 1)); // get where the real upload end
+            if (!Number.isInteger(end) || end < start)
                 return new Error("bad range: " + r);
         }
     }
