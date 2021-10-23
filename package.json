@@ -1,7 +1,8 @@
 {
-  "name": "GDriveUploader",
-  "version": "1.0.0",
-  "main": "index.js",
-  "author": "Samphan Raruenrom",
-  "license": "MIT"
+    "name": "gdrive-upload",
+    "description": "A JavaScript function to upload a file to Google Drive",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "author": "Samphan Raruenrom <untsamphan@gmail.com>",
+    "license": "MIT"
 }
