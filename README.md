@@ -7,11 +7,11 @@ Small JavaScript library, for uploading large or small file in chunks to Google 
 - specify any metadata, e.g., name, description
 - provide a callback to show progress
 - return Promise, allow handling of success/failure case
-- for use in Google Apps Script projects
+- for use in Google Apps Script web app project
 
 ## Installation
 
-Copy the .js file, or use jsdelivr:-
+Copy the file `dist/gdriveUpload.js` into your web app, or use it via jsdelivr by putting this in your HTML:-
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/untsamphan/gdrive-upload@1.1/dist/gdriveUpload.min.js"></script>
@@ -22,33 +22,33 @@ Copy the .js file, or use jsdelivr:-
 The function:-
 
 ```javascript
-async function gdriveUpload(option: _UploadOptions)
+async function gdriveUpload(option: UploadOptions)
 ```
 
-It returns `undefined` if success or `Error` if failed.
+It returns `undefined` if success or an `Error` if failed.
 
 The `option` parameters:-
 
 ```typescript
-interface _UploadOptions {
+interface UploadOptions {
   file: File; // the file to upload
   token: string; // auth token from Google api
   folder?: string; // parent folder id to upload to (root if missing)
-  metadata?: _Metadata; // such as `name`, `description`
+  metadata?: Metadata; // such as `name`, `description`
   chunkSize?: number; // must be multiple of 256*1024 (default 5M)
-  onProgress?: _OnProgressFn; // 0:start 1:done 0.x:progress
+  onProgress?: OnProgressFn; // 0:start 1:done 0.x:progress
 }
-type _OnProgressFn = (value: number) => void;
-type _Metadata = {[key: string]: any};
+type OnProgressFn = (value: number) => void;
+type Metadata = {[key: string]: any};
 ```
 
-The parameter `file` and `token` are required. The rest are optional. For the list of available metadata properties see the list at [file.create](https://developers.google.com/drive/api/v3/reference/files/create#request-body) API.
+The parameter `file` and `token` are required. The rest are optional. For the list of available `metadata` properties see the list at [file.create](https://developers.google.com/drive/api/v3/reference/files/create#request-body) API.
 
 ## Example
 
 Sample code from an Apps Script web app. The Apps Script function `getFolderAndToken()` returns the folder id and OAuth token.
 
-### Web app JavaScript
+### Web app
 
 ```javascript
 function uploadFile() {
@@ -79,7 +79,7 @@ function handleProgress(value) {
 }
 ```
 
-### App Script
+### Apps Script
 
 ```javascript
 function getFolderAndToken() {
@@ -92,3 +92,22 @@ function getFolderAndToken() {
   };
 }
 ```
+
+### Example Project
+
+You can `Make a copy` of the small project [GDrive Uploader](https://script.google.com/d/1bPT0XaNZct2PyGh93j84TfK7NCdACWixSBNCyPDd8sMektbXLa2rxBUC/edit?usp=sharing) to try the code.
+
+## Credits
+
+Based on
+
+1. [Tanaike](https://tanaikech.github.io/about/)'s [Resumable_Upload_For_WebApps](https://github.com/tanaikech/Resumable_Upload_For_WebApps)
+1. Mike Sallese's article [Upload a file in chunks via resumable upload with the Google Drive API](https://www.mikesallese.me/blog/google-drive-resumable-upload/)
+
+## License
+
+[CC0](https://choosealicense.com/licenses/cc0-1.0/)
+
+## Contributing
+
+Please don't hesitate to open an issue or pull request.

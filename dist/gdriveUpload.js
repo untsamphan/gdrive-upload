@@ -33,7 +33,7 @@ async function gdriveUpload(opt) {
                 body: JSON.stringify(metadata)
             });
             if (!response.ok)
-                return new Error("api fetch: " + response.status);
+                return new Error("create: " + response.status);
             const location = response.headers.get("location");
             if (!location)
                 return new Error("no location");
@@ -66,7 +66,7 @@ async function gdriveUpload(opt) {
                     return undefined; // success
                 }
                 if (response.status != 308)
-                    return new Error("chunk fetch: " + response.status);
+                    return new Error("upload: " + response.status);
                 const r = response.headers.get("Range");
                 if (!r)
                     return new Error("no Range");
