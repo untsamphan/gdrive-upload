@@ -1,9 +1,9 @@
 interface _UploadOptions {
   file: File; // the file to upload
   token: string; // auth token from Google api
-  folder?: string; // parent folder id to upload to
+  folder?: string; // parent folder id to upload to (root if missing)
   metadata?: _Metadata; // such as `name`, `description`
-  chunkSize?: number; // must be multiple of 256*1024
+  chunkSize?: number; // must be multiple of 256*1024 (default 5M)
   onProgress?: _OnProgressFn; // 0:start 1:done 0.x:progress
 }
 type _OnProgressFn = (value: number) => void;

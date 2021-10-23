@@ -2,7 +2,8 @@
     "name": "gdrive-upload",
     "description": "A JavaScript function to upload a file to Google Drive",
     "version": "1.0.0",
-    "main": "dist/index.js",
+    "main": "./dist/griveUpload.js",
+    "types": "./dist/gdriveUpload.d.ts",
     "author": "Samphan Raruenrom <untsamphan@gmail.com>",
     "license": "MIT"
 }
