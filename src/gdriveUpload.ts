@@ -14,7 +14,7 @@ const enum _DEFAULT { chunkSize = 5 * 1024 * 1024 };
 async function gdriveUpload(opt: _UploadOptions)
 {
   if (!(opt.file && opt.token)) throw new TypeError("bad param");
-  if(!opt.file.size) return new Error("emtpy file");
+  if(!opt.file.size) return new Error("empty file");
 
   try {
     const location = await getUploadLocation();
@@ -47,7 +47,7 @@ async function gdriveUpload(opt: _UploadOptions)
           body: JSON.stringify(metadata)
         });
 
-      if (!response.ok) return new Error("create: " + response.status);
+      if (!response.ok) return new Error(`create: ${response.status} ${response.statusText}`);
       const location = response.headers.get("location");
       if (!location) return new Error("no location");
       return location;
@@ -82,7 +82,7 @@ async function gdriveUpload(opt: _UploadOptions)
           onProgress(1); // signal 100% progress
           return undefined; // success
         }
-        if (response.status != 308) return new Error("upload: " + response.status);
+        if (response.status != 308) return new Error(`upload: ${response.status} ${response.statusText}`);
 
         const r = response.headers.get("Range");
         if (!r) return new Error("no Range");
