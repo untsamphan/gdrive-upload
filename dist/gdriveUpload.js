@@ -1,8 +1,10 @@
 "use strict";
 ;
 async function gdriveUpload(opt) {
-    if (!(opt.file && opt.file.size && opt.token))
+    if (!(opt.file && opt.token))
         throw new TypeError("bad param");
+    if (!opt.file.size)
+        return new Error("emtpy file");
     try {
         const location = await getUploadLocation();
         if (location instanceof Error)
