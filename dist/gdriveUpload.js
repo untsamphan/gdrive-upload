@@ -1,7 +1,7 @@
 "use strict";
 ;
 async function gdriveUpload(opt) {
-    if (!(opt.file && opt.token))
+    if (!(opt.file && opt.file.size && opt.token))
         throw new TypeError("bad param");
     try {
         const location = await getUploadLocation();

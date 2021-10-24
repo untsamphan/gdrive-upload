@@ -13,7 +13,7 @@ const enum _DEFAULT { chunkSize = 5 * 1024 * 1024 };
 
 async function gdriveUpload(opt: _UploadOptions)
 {
-  if (!(opt.file && opt.token)) throw new TypeError("bad param");
+  if (!(opt.file &&opt.file.size && opt.token)) throw new TypeError("bad param");
 
   try {
     const location = await getUploadLocation();
