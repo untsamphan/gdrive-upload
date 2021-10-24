@@ -1,13 +1,18 @@
 # gdriveUpload
 
-Small JavaScript library, for uploading large or small file in chunks to Google Drive, using the [resumable upload](https://developers.google.com/drive/api/v3/manage-uploads#resumable) API</a>
+Small JavaScript library, for uploading large or small files in chunks to Google Drive, using the [resumable upload](https://developers.google.com/drive/api/v3/manage-uploads#resumable) API</a>
 
 - upload large files, e.g., 2GB
-- minimal memory requirement, depending on the configurable `chunkSize`
+- minimal memory requirement (e.g., suitable for mobile), depending on the configurable `chunkSize`
 - specify any metadata, e.g., name, description
 - provide a callback to show progress
 - return Promise, allow handling of success/failure case
 - for use in Google Apps Script web app project
+
+## Requirements
+
+- [Apps Script](https://developers.google.com/apps-script). My initial use case is an Apps Script [web app](https://developers.google.com/apps-script/guides/web).
+- Or any other way to [get an OAuth2 token](https://developers.google.com/identity/protocols/oauth2/javascript-implicit-flow), such as the [Google API Client Library](https://github.com/google/google-api-javascript-client).
 
 ## Installation
 
@@ -42,7 +47,7 @@ type OnProgressFn = (value: number) => void;
 type Metadata = {[key: string]: any};
 ```
 
-The parameter `file` and `token` are required. The rest are optional. For the list of available `metadata` properties see the list at [file.create](https://developers.google.com/drive/api/v3/reference/files/create#request-body) API.
+The parameter `file` and `token` are required. The rest are optional. For the list of available `metadata`, properties see the list at [file.create](https://developers.google.com/drive/api/v3/reference/files/create#request-body) API.
 
 ## Example
 
